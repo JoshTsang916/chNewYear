@@ -195,18 +195,24 @@ async function exportImage() {
   try {
     const canvas = await html2canvas(container, {
       backgroundColor: '#1a0a0a',
-      scale: 2,
       useCORS: true,
+      scale: 2, // Retain high resolution
       logging: false,
       width: container.scrollWidth,
-      height: container.scrollHeight,
       windowWidth: container.scrollWidth,
-      windowHeight: container.scrollHeight,
       onclone: (clonedDoc) => {
         const clonedContainer = clonedDoc.getElementById('app-container');
         if (clonedContainer) {
           clonedContainer.style.overflow = 'visible';
-          clonedContainer.style.height = 'auto';
+          clonedContainer.style.height = 'auto'; // Let content dictate height
+          clonedContainer.style.minHeight = '0';
+          clonedContainer.style.paddingBottom = '30px'; // Trim padding
+        }
+
+        // Hide export button section to save space
+        const exportSection = clonedDoc.querySelector('.export-section');
+        if (exportSection) {
+          exportSection.style.display = 'none';
         }
 
         // Fix: disable animations on cards to ensure they are visible in capture
