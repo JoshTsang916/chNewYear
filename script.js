@@ -239,17 +239,71 @@ async function exportImage() {
         });
 
         // Replace select elements (activity and location) with their displayed text for clean export
-        clonedDoc.querySelectorAll('.activity-select, .location-select-native').forEach(sel => {
-          const selectedText = sel.options[sel.selectedIndex]?.text || '';
-          const isPlaceholder = !sel.value || selectedText === '地點' || selectedText === '選擇行程...';
+        clonedDoc.querySelectorAll('.activity-wrapper').forEach(wrapper => {
+          const select = wrapper.querySelector('.activity-select');
+          const customInput = wrapper.querySelector('.activity-custom-input');
 
+          if (!select) return;
+
+          let displayText = '';
+          let isCustom = false;
+          let isPlaceholder = false;
+
+          if (select.value === 'custom') {
+            isCustom = true;
+            // Get text from the custom input sibling
+            displayText = customInput ? customInput.value.trim() : '';
+            // Hide the custom input element in clone so it doesn't show up as a box
+            if (customInput) customInput.style.display = 'none';
+          } else {
+            displayText = select.options[select.selectedIndex]?.text || '';
+          }
+
+          if (!displayText || displayText === '地點' || displayText === '選擇行程...') {
+            select.style.display = 'none';
+            if (customInput) customInput.style.display = 'none';
+            return;
+          }
+
+          // Check if "Welcome Invite" -> Highlight Color
+          const isHighlight = displayText.includes('歡迎邀約');
+
+          const span = clonedDoc.createElement('span');
+          span.style.cssText = `
+            flex: 1; min-width: 0;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid ${isHighlight ? 'rgba(45, 212, 191, 0.3)' : 'rgba(212,168,67,0.15)'};
+            border-radius: 8px;
+            color: ${isHighlight ? '#2dd4bf' : '#f0d060'}; /* Aqua for invite, Gold for others */
+            font-size: 0.78rem;
+            padding: 8px 10px;
+            font-family: 'Noto Sans TC', sans-serif;
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            box-shadow: ${isHighlight ? '0 0 10px rgba(45, 212, 191, 0.15)' : 'none'};
+          `;
+          span.textContent = displayText;
+
+          select.parentNode.insertBefore(span, select);
+          select.style.display = 'none';
+        });
+
+        // Location selects
+        clonedDoc.querySelectorAll('.location-select-native').forEach(sel => {
+          const selectedText = sel.options[sel.selectedIndex]?.text || '';
+          if (!sel.value || selectedText === '地點') {
+            sel.style.display = 'none';
+            return;
+          }
           const span = clonedDoc.createElement('span');
           span.style.cssText = `
             flex: 1; min-width: 0;
             background: rgba(255,255,255,0.06);
             border: 1px solid rgba(212,168,67,0.15);
             border-radius: 8px;
-            color: ${isPlaceholder ? '#8a7a6a' : '#f0d060'};
+            color: #f0d060;
             font-size: 0.78rem;
             padding: 8px 10px;
             font-family: 'Noto Sans TC', sans-serif;
@@ -268,35 +322,13 @@ async function exportImage() {
     // Create image from canvas
     const imgData = canvas.toDataURL('image/png');
 
-    // Open in new window for user to view/save
-    const win = window.open('', '_blank');
-    if (win) {
-      win.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>2026 春節行程 - 預覽</title>
-          <style>
-            body { margin: 0; background: #000; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-            img { max-width: 100%; height: auto; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-            .tip { position: fixed; bottom: 20px; color: white; font-family: sans-serif; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 20px; pointer-events: none; }
-          </style>
-        </head>
-        <body>
-          <div class="tip">長按圖片即可儲存 / 右鍵另存新檔</div>
-          <img src="${imgData}" alt="春節行程" />
-        </body>
-        </html>
-      `);
-      win.document.close();
-    } else {
-      // Fallback if popup blocked
-      alert('請允許彈出視窗以檢視圖片，或嘗試使用「產生圖片」按鈕旁的下載連結。');
-      // Create download link as fallback
-      const link = document.createElement('a');
-      link.download = '2026-春節行程.png';
-      link.href = imgData;
-      link.click();
+    // Show Modal instead of window.open (Better for LINE/Mobile)
+    const modal = document.getElementById('exportModal');
+    const modalImg = document.getElementById('exportImg');
+
+    if (modal && modalImg) {
+      modalImg.src = imgData;
+      modal.classList.add('show');
     }
 
   } catch (err) {
@@ -310,5 +342,27 @@ async function exportImage() {
   }
 }
 
+// ----- Modal Init -----
+function initModal() {
+  const modal = document.getElementById('exportModal');
+  const closeBtn = document.getElementById('closeModalBtn');
+
+  if (closeBtn && modal) {
+    closeBtn.addEventListener('click', () => {
+      modal.classList.remove('show');
+    });
+
+    // Click outside to close
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.remove('show');
+      }
+    });
+  }
+}
+
 // ----- Init -----
-document.addEventListener('DOMContentLoaded', buildCalendar);
+document.addEventListener('DOMContentLoaded', () => {
+  buildCalendar();
+  initModal();
+});
