@@ -231,22 +231,26 @@ async function exportImage() {
           d.style.display = 'none';
         });
 
-        // Replace select elements with their displayed text for clean export
-        clonedDoc.querySelectorAll('.activity-select').forEach(sel => {
+        // Replace select elements (activity and location) with their displayed text for clean export
+        clonedDoc.querySelectorAll('.activity-select, .location-select-native').forEach(sel => {
           const selectedText = sel.options[sel.selectedIndex]?.text || '';
+          const isPlaceholder = !sel.value || selectedText === '地點' || selectedText === '選擇行程...';
+
           const span = clonedDoc.createElement('span');
           span.style.cssText = `
             flex: 1; min-width: 0;
             background: rgba(255,255,255,0.06);
             border: 1px solid rgba(212,168,67,0.15);
             border-radius: 8px;
-            color: ${sel.value ? '#f0d060' : '#8a7a6a'};
+            color: ${isPlaceholder ? '#8a7a6a' : '#f0d060'};
             font-size: 0.78rem;
             padding: 8px 10px;
             font-family: 'Noto Sans TC', sans-serif;
             display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
           `;
-          // Remove emoji prefix for cleaner look
           span.textContent = selectedText;
           sel.parentNode.insertBefore(span, sel);
           sel.style.display = 'none';
