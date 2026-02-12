@@ -4,7 +4,7 @@
 
 // ----- Data -----
 const DAYS = [
-  { date: '2/14', label: '除夕-2', weekday: '六' },
+  { date: '2/14', label: '年廿七', weekday: '六' },
   { date: '2/15', label: '小年夜', weekday: '日' },
   { date: '2/16', label: '除夕', weekday: '一' },
   { date: '2/17', label: '初一 走春', weekday: '二' },
@@ -209,6 +209,13 @@ async function exportImage() {
           clonedContainer.style.height = 'auto';
         }
 
+        // Fix: disable animations on cards to ensure they are visible in capture
+        clonedDoc.querySelectorAll('.day-card').forEach(card => {
+          card.style.animation = 'none';
+          card.style.opacity = '1';
+          card.style.transform = 'none';
+        });
+
         // Fix: swap gradient-clip text to solid gold color for html2canvas
         const titleMain = clonedDoc.querySelector('.title-main');
         if (titleMain) {
@@ -258,11 +265,39 @@ async function exportImage() {
       }
     });
 
-    // Create download link
-    const link = document.createElement('a');
-    link.download = '2026-春節行程.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+    // Create image from canvas
+    const imgData = canvas.toDataURL('image/png');
+
+    // Open in new window for user to view/save
+    const win = window.open('', '_blank');
+    if (win) {
+      win.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>2026 春節行程 - 預覽</title>
+          <style>
+            body { margin: 0; background: #000; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+            img { max-width: 100%; height: auto; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+            .tip { position: fixed; bottom: 20px; color: white; font-family: sans-serif; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 20px; pointer-events: none; }
+          </style>
+        </head>
+        <body>
+          <div class="tip">長按圖片即可儲存 / 右鍵另存新檔</div>
+          <img src="${imgData}" alt="春節行程" />
+        </body>
+        </html>
+      `);
+      win.document.close();
+    } else {
+      // Fallback if popup blocked
+      alert('請允許彈出視窗以檢視圖片，或嘗試使用「產生圖片」按鈕旁的下載連結。');
+      // Create download link as fallback
+      const link = document.createElement('a');
+      link.download = '2026-春節行程.png';
+      link.href = imgData;
+      link.click();
+    }
 
   } catch (err) {
     console.error('Export failed:', err);

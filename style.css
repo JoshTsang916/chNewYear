@@ -4,12 +4,14 @@
 
 :root {
   /* Deep red festive palette */
+  /* Dark luxurious palette */
   --bg-deep: #1a0a0a;
   --bg-dark: #2a1215;
   --bg-card: #321a1d;
   --bg-card-hover: #3d2225;
-  --bg-input: rgba(255, 255, 255, 0.06);
-  --bg-input-focus: rgba(255, 255, 255, 0.1);
+  --bg-input: #1a0505;
+  /* Deep black-red */
+  --bg-input-focus: #2a0b0b;
 
   /* Gold spectrum */
   --gold-bright: #f0d060;
@@ -581,8 +583,12 @@ body::before {
 .time-slots {
   display: none;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   animation: slotExpand 0.35s ease-out;
+  background: rgba(10, 0, 0, 0.2);
+  padding: 10px;
+  border-radius: var(--radius-inner);
+  margin-top: 4px;
 }
 
 .time-slots.show {
