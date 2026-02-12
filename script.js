@@ -26,9 +26,9 @@ const ALL_LOCATIONS = LOCATIONS.flatMap(g => g.items);
 
 const ACTIVITY_OPTIONS = [
   { value: '', label: '選擇行程...' },
-  { value: '歡迎邀約', label: '🎉 歡迎邀約' },
-  { value: '陪家人', label: '🏠 陪家人' },
-  { value: 'custom', label: '✎ 自行輸入' },
+  { value: '歡迎邀約', label: '歡迎邀約' },
+  { value: '陪家人', label: '陪家人' },
+  { value: 'custom', label: '自行輸入' },
 ];
 
 const TIME_SLOTS = [
@@ -124,95 +124,26 @@ function initActivitySelect(select) {
   });
 }
 
-// ----- Location Searchable Dropdown -----
+// ----- Location Select -----
 function buildLocationSearch(id) {
+  // Option groups
+  const groups = LOCATIONS.map(group => {
+    const options = group.items.map(item => `<option value="${item}">${item}</option>`).join('');
+    return `<optgroup label="${group.group}">${options}</optgroup>`;
+  }).join('');
+
   return `
-    <div class="location-search-wrapper">
-      <input type="text" class="location-search-input" id="${id}" placeholder="📍 地點" readonly>
-      <div class="location-dropdown" id="dd-${id}"></div>
+    <div class="location-wrapper">
+      <select class="location-select-native" id="${id}">
+        <option value="" disabled selected>地點</option>
+        ${groups}
+      </select>
     </div>
   `;
 }
 
-function initLocationDropdown(input) {
-  const ddId = 'dd-' + input.id;
-  const dropdown = document.getElementById(ddId);
+// (Old dropdown init code removed since we now use native select)
 
-  function renderDropdown(filter = '') {
-    let html = '';
-    LOCATIONS.forEach(group => {
-      const filtered = group.items.filter(item =>
-        !filter || item.includes(filter)
-      );
-      if (filtered.length > 0) {
-        html += `<div class="location-dropdown-group-label">${group.group}</div>`;
-        filtered.forEach(item => {
-          html += `<div class="location-dropdown-item" data-value="${item}">${item}</div>`;
-        });
-      }
-    });
-    if (!html) {
-      html = '<div class="location-dropdown-item" style="color:var(--text-muted)">無符合結果</div>';
-    }
-    dropdown.innerHTML = html;
-
-    // Bind click
-    dropdown.querySelectorAll('.location-dropdown-item[data-value]').forEach(el => {
-      el.addEventListener('click', (e) => {
-        e.stopPropagation();
-        input.value = el.dataset.value;
-        input.style.color = 'var(--gold-bright)';
-        dropdown.classList.remove('show');
-        input.readOnly = true;
-      });
-    });
-  }
-
-  // Click to open
-  input.addEventListener('click', (e) => {
-    e.stopPropagation();
-    // Close all other dropdowns first
-    document.querySelectorAll('.location-dropdown.show').forEach(d => {
-      if (d.id !== ddId) d.classList.remove('show');
-    });
-    input.readOnly = false;
-    input.value = '';
-    input.style.color = 'var(--text-primary)';
-    renderDropdown();
-    dropdown.classList.add('show');
-    input.focus();
-  });
-
-  // Type to filter
-  input.addEventListener('input', () => {
-    renderDropdown(input.value.trim());
-  });
-
-  // On blur - restore previous value or clear
-  input.addEventListener('blur', () => {
-    setTimeout(() => {
-      dropdown.classList.remove('show');
-      if (!ALL_LOCATIONS.includes(input.value)) {
-        if (input.value.trim() && ALL_LOCATIONS.some(l => l.includes(input.value.trim()))) {
-          const match = ALL_LOCATIONS.find(l => l.includes(input.value.trim()));
-          input.value = match;
-          input.style.color = 'var(--gold-bright)';
-        } else if (input.value.trim()) {
-          input.value = '';
-          input.style.color = '';
-        }
-      }
-      input.readOnly = true;
-    }, 200);
-  });
-}
-
-// Close dropdowns when clicking outside
-document.addEventListener('click', () => {
-  document.querySelectorAll('.location-dropdown.show').forEach(d => {
-    d.classList.remove('show');
-  });
-});
 
 // ----- Toggle Mode -----
 function toggleMode(index, mode) {
@@ -239,7 +170,9 @@ async function exportImage() {
   const overlay = document.getElementById('loadingOverlay');
   overlay.classList.add('show');
 
-  await new Promise(r => setTimeout(r, 100));
+  // Wait for fonts to fully load
+  await document.fonts.ready;
+  await new Promise(r => setTimeout(r, 300));
 
   const container = document.getElementById('app-container');
 
@@ -256,7 +189,7 @@ async function exportImage() {
 
   const watermark = document.createElement('div');
   watermark.className = 'export-watermark';
-  watermark.textContent = '2026 春節行程規劃 ✦ Lunar New Year Planner';
+  watermark.innerHTML = '2026 春節行程規劃 <i class="fa-solid fa-star" style="font-size:0.5rem;vertical-align:middle;margin:0 4px;"></i> Lunar New Year Planner';
   container.appendChild(watermark);
 
   try {
@@ -275,9 +208,48 @@ async function exportImage() {
           clonedContainer.style.overflow = 'visible';
           clonedContainer.style.height = 'auto';
         }
+
+        // Fix: swap gradient-clip text to solid gold color for html2canvas
+        const titleMain = clonedDoc.querySelector('.title-main');
+        if (titleMain) {
+          titleMain.style.background = 'none';
+          titleMain.style.webkitBackgroundClip = 'unset';
+          titleMain.style.webkitTextFillColor = '#d4a843';
+          titleMain.style.backgroundClip = 'unset';
+          titleMain.style.color = '#d4a843';
+          titleMain.style.filter = 'none';
+        }
+
+        // Fix: make watermark text visible (no gradient issues)
+        const bgWatermark = clonedDoc.querySelector('.bg-watermark');
+        if (bgWatermark) {
+          bgWatermark.style.color = 'rgba(212, 168, 67, 0.03)';
+        }
+
         // Hide all dropdowns in clone
         clonedDoc.querySelectorAll('.location-dropdown').forEach(d => {
           d.style.display = 'none';
+        });
+
+        // Replace select elements with their displayed text for clean export
+        clonedDoc.querySelectorAll('.activity-select').forEach(sel => {
+          const selectedText = sel.options[sel.selectedIndex]?.text || '';
+          const span = clonedDoc.createElement('span');
+          span.style.cssText = `
+            flex: 1; min-width: 0;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(212,168,67,0.15);
+            border-radius: 8px;
+            color: ${sel.value ? '#f0d060' : '#8a7a6a'};
+            font-size: 0.78rem;
+            padding: 8px 10px;
+            font-family: 'Noto Sans TC', sans-serif;
+            display: block;
+          `;
+          // Remove emoji prefix for cleaner look
+          span.textContent = selectedText;
+          sel.parentNode.insertBefore(span, sel);
+          sel.style.display = 'none';
         });
       }
     });
