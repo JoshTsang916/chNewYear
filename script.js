@@ -50,7 +50,7 @@ function buildCalendar() {
     card.innerHTML = `
       <div class="card-header">
         <div class="card-date-info">
-          <span class="date-badge">${day.date}</span>
+          <span class="date-badge">${day.date} ${day.weekday}</span>
           <span class="date-label">${day.label}</span>
         </div>
         <div class="toggle-group">
@@ -193,13 +193,18 @@ async function exportImage() {
   container.appendChild(watermark);
 
   try {
+    // Check if we need 2-column layout (> 5 cards)
+    const cardCount = document.querySelectorAll('.day-card').length;
+    const isTwoColumn = cardCount > 5;
+    const targetWidth = isTwoColumn ? 1024 : container.scrollWidth;
+
     const canvas = await html2canvas(container, {
       backgroundColor: '#1a0a0a',
       useCORS: true,
       scale: 2, // Retain high resolution
       logging: false,
-      width: container.scrollWidth,
-      windowWidth: container.scrollWidth,
+      width: targetWidth,
+      windowWidth: targetWidth,
       onclone: (clonedDoc) => {
         const clonedContainer = clonedDoc.getElementById('app-container');
         if (clonedContainer) {
@@ -207,6 +212,39 @@ async function exportImage() {
           clonedContainer.style.height = 'auto'; // Let content dictate height
           clonedContainer.style.minHeight = '0';
           clonedContainer.style.paddingBottom = '30px'; // Trim padding
+
+          // Apply 2-column grid layout
+          if (isTwoColumn) {
+            clonedContainer.style.maxWidth = '1024px';
+            clonedContainer.style.width = '1024px';
+            clonedContainer.style.padding = '40px'; // Increase padding for desktop-like view
+
+            const calendarContainer = clonedDoc.getElementById('calendar-container');
+            if (calendarContainer) {
+              // Create two columns for masonry layout
+              const col1 = clonedDoc.createElement('div');
+              const col2 = clonedDoc.createElement('div');
+              col1.style.cssText = 'display: flex; flex-direction: column; gap: 24px; flex: 1; min-width: 0;';
+              col2.style.cssText = 'display: flex; flex-direction: column; gap: 24px; flex: 1; min-width: 0;';
+
+              const cards = Array.from(calendarContainer.querySelectorAll('.day-card'));
+              calendarContainer.innerHTML = '';
+              calendarContainer.style.display = 'flex';
+              calendarContainer.style.flexDirection = 'row';
+              calendarContainer.style.alignItems = 'flex-start';
+              calendarContainer.style.gap = '24px';
+
+              const midPoint = Math.ceil(cards.length / 2);
+              const leftCards = cards.slice(0, midPoint);
+              const rightCards = cards.slice(midPoint);
+
+              leftCards.forEach(card => col1.appendChild(card));
+              rightCards.forEach(card => col2.appendChild(card));
+
+              calendarContainer.appendChild(col1);
+              calendarContainer.appendChild(col2);
+            }
+          }
         }
 
         // Hide export button section to save space
