@@ -216,6 +216,15 @@ async function exportImage() {
           card.style.transform = 'none';
         });
 
+        // Fix: disable animations on time-slots and force visibility
+        clonedDoc.querySelectorAll('.time-slots').forEach(slot => {
+          slot.style.animation = 'none';
+          slot.style.transition = 'none';
+          slot.style.opacity = '1';
+          slot.style.maxHeight = 'none';
+          slot.style.transform = 'none';
+        });
+
         // Fix: swap gradient-clip text to solid gold color for html2canvas
         const titleMain = clonedDoc.querySelector('.title-main');
         if (titleMain) {
@@ -240,54 +249,58 @@ async function exportImage() {
 
         // Replace select elements (activity and location) with their displayed text for clean export
         clonedDoc.querySelectorAll('.activity-wrapper').forEach(wrapper => {
-          const select = wrapper.querySelector('.activity-select');
-          const customInput = wrapper.querySelector('.activity-custom-input');
+          try {
+            const select = wrapper.querySelector('.activity-select');
+            const customInput = wrapper.querySelector('.activity-custom-input');
 
-          if (!select) return;
+            if (!select) return;
 
-          let displayText = '';
-          let isCustom = false;
-          let isPlaceholder = false;
+            let displayText = '';
+            let isCustom = false;
+            let isPlaceholder = false;
 
-          if (select.value === 'custom') {
-            isCustom = true;
-            // Get text from the custom input sibling
-            displayText = customInput ? customInput.value.trim() : '';
-            // Hide the custom input element in clone so it doesn't show up as a box
-            if (customInput) customInput.style.display = 'none';
-          } else {
-            displayText = select.options[select.selectedIndex]?.text || '';
-          }
+            if (select.value === 'custom') {
+              isCustom = true;
+              // Get text from the custom input sibling
+              displayText = customInput ? customInput.value.trim() : '';
+              // Hide the custom input element in clone so it doesn't show up as a box
+              if (customInput) customInput.style.display = 'none';
+            } else {
+              displayText = select.options[select.selectedIndex]?.text || '';
+            }
 
-          if (!displayText || displayText === '地點' || displayText === '選擇行程...') {
+            if (!displayText || displayText === '地點' || displayText === '選擇行程...') {
+              select.style.display = 'none';
+              if (customInput) customInput.style.display = 'none';
+              return;
+            }
+
+            // Check if "Welcome Invite" -> Highlight Color
+            const isHighlight = displayText.includes('歡迎邀約');
+
+            const span = clonedDoc.createElement('span');
+            span.style.cssText = `
+              flex: 1; min-width: 0;
+              background: rgba(255,255,255,0.06);
+              border: 1px solid ${isHighlight ? 'rgba(45, 212, 191, 0.3)' : 'rgba(212,168,67,0.15)'};
+              border-radius: 8px;
+              color: ${isHighlight ? '#2dd4bf' : '#f0d060'}; /* Aqua for invite, Gold for others */
+              font-size: 0.78rem;
+              padding: 8px 10px;
+              font-family: 'Noto Sans TC', sans-serif;
+              display: block;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              box-shadow: ${isHighlight ? '0 0 10px rgba(45, 212, 191, 0.15)' : 'none'};
+            `;
+            span.textContent = displayText;
+
+            select.parentNode.insertBefore(span, select);
             select.style.display = 'none';
-            if (customInput) customInput.style.display = 'none';
-            return;
+          } catch (err) {
+            console.warn('Error processing activity wrapper in export:', err);
           }
-
-          // Check if "Welcome Invite" -> Highlight Color
-          const isHighlight = displayText.includes('歡迎邀約');
-
-          const span = clonedDoc.createElement('span');
-          span.style.cssText = `
-            flex: 1; min-width: 0;
-            background: rgba(255,255,255,0.06);
-            border: 1px solid ${isHighlight ? 'rgba(45, 212, 191, 0.3)' : 'rgba(212,168,67,0.15)'};
-            border-radius: 8px;
-            color: ${isHighlight ? '#2dd4bf' : '#f0d060'}; /* Aqua for invite, Gold for others */
-            font-size: 0.78rem;
-            padding: 8px 10px;
-            font-family: 'Noto Sans TC', sans-serif;
-            display: block;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            box-shadow: ${isHighlight ? '0 0 10px rgba(45, 212, 191, 0.15)' : 'none'};
-          `;
-          span.textContent = displayText;
-
-          select.parentNode.insertBefore(span, select);
-          select.style.display = 'none';
         });
 
         // Location selects
